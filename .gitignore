@@ -1,0 +1,11 @@
+﻿node_modules/
+backend/.env
+frontend/.env
+.dist/
+dist/
+build/
+.vscode/
+.idea/
+coverage/
+.DS_Store
+pnpm-lock.yaml
