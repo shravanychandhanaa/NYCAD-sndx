@@ -1,33 +1,131 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
+const moment = require('moment');
 
-// GET /stats — total active drivers, count by borough, last updated date
-router.get('/', async (_req, res) => {
+// Helper to get current date in YYYY-MM-DD format
+const getCurrentDate = () => moment().format('YYYY-MM-DD');
+
+// Store daily stats for trend analysis
+async function storeDailyStats() {
+  const client = await pool.connect();
   try {
-    const totalQ = pool.query('SELECT COUNT(*)::int AS total FROM drivers WHERE active = TRUE');
-    const boroughQ = pool.query(`
-      SELECT COALESCE(borough, 'Unknown') AS borough, COUNT(*)::int AS count
+    await client.query('BEGIN');
+    
+    // Get current date's stats
+    const stats = await getCurrentStats(client);
+    
+    // Store in trends table if not already stored today
+    await client.query(
+      'INSERT INTO driver_trends (date, total_drivers, by_borough) VALUES ($1, $2, $3::jsonb) ON CONFLICT (date) DO NOTHING',
+      [getCurrentDate(), stats.totalActiveDrivers, JSON.stringify(stats.byBorough)]
+    );
+    
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error storing daily stats:', error);
+  } finally {
+    client.release();
+  }
+}
+
+// Get current stats (reusable for both API and trend storage)
+async function getCurrentStats(client = pool) {
+  const totalQ = client.query('SELECT COUNT(*)::int AS total FROM drivers WHERE active = TRUE');
+  
+  const boroughQ = client.query(`
+    WITH rows AS (
+      SELECT 
+        COALESCE(
+          NULLIF(borough, ''),
+          CASE 
+            WHEN base_number LIKE 'B%' THEN 'Bronx'
+            WHEN base_number LIKE 'K%' THEN 'Brooklyn'
+            WHEN base_number LIKE 'M%' THEN 'Manhattan'
+            WHEN base_number LIKE 'Q%' THEN 'Queens'
+            WHEN base_number LIKE 'R%' THEN 'Staten Island'
+            ELSE NULL
+          END,
+          'Unknown'
+        ) AS borough
       FROM drivers
       WHERE active = TRUE
-      GROUP BY COALESCE(borough, 'Unknown')
-      ORDER BY borough
-    `);
+    )
+    SELECT borough, COUNT(*)::int AS count
+    FROM rows
+    GROUP BY borough
+    ORDER BY borough
+  `);
+  
+  const lastUpdatedQ = client.query('SELECT MAX(updated_at) AS last_updated FROM drivers');
+  
+  const [totalResult, boroughResult, lastUpdatedResult] = await Promise.all([totalQ, boroughQ, lastUpdatedQ]);
+  
+  return {
+    totalActiveDrivers: totalResult.rows[0]?.total || 0,
+    byBorough: boroughResult.rows,
+    lastUpdated: lastUpdatedResult.rows[0]?.last_updated || null
+  };
+}
+
+// Get historical trends (last 30 days)
+async function getTrends() {
+  const result = await pool.query(
+    `SELECT date, total_drivers, by_borough 
+     FROM driver_trends 
+     WHERE date >= CURRENT_DATE - INTERVAL '30 days'
+     ORDER BY date ASC`
+  );
+  
+  return result.rows.map(row => ({
+    date: row.date,
+    totalDrivers: row.total_drivers,
+    byBorough: typeof row.by_borough === 'string' ? JSON.parse(row.by_borough) : row.by_borough
+  }));
+}
+
+// Main stats endpoint
+router.get('/', async (req, res) => {
+  try {
+    const [currentStats, trends] = await Promise.all([
+      getCurrentStats(),
+      getTrends()
+    ]);
     
-    const updatedQ = pool.query(
-      "SELECT MAX(updated_at) AS updated_at, MAX(dataset_last_updated) AS dataset_last_updated FROM drivers"
-    );
-
-    const [totalRes, boroughRes, updatedRes] = await Promise.all([totalQ, boroughQ, updatedQ]);
-
+    // Store today's stats for trends (fire and forget)
+    storeDailyStats().catch(console.error);
+    
     res.json({
-      totalActiveDrivers: totalRes.rows[0].total || 0,
-      byBorough: boroughRes.rows,
-      lastUpdated: updatedRes.rows[0].dataset_last_updated || updatedRes.rows[0].updated_at,
+      ...currentStats,
+      trends: {
+        daily: trends,
+        last30Days: {
+          min: trends.length > 0 ? Math.min(...trends.map(t => t.totalDrivers)) : 0,
+          max: trends.length > 0 ? Math.max(...trends.map(t => t.totalDrivers)) : 0,
+          change: trends.length > 1 
+            ? ((trends[trends.length-1].totalDrivers - trends[0].totalDrivers) / trends[0].totalDrivers * 100).toFixed(1)
+            : 0
+        }
+      }
     });
-  } catch (err) {
-    console.error('Error fetching stats', err);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error) {
+    console.error('Error in stats endpoint:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch statistics',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Separate endpoint for historical data
+router.get('/history', async (req, res) => {
+  try {
+    const trends = await getTrends();
+    res.json(trends);
+  } catch (error) {
+    console.error('Error fetching historical data:', error);
+    res.status(500).json({ error: 'Failed to fetch historical data' });
   }
 });
 

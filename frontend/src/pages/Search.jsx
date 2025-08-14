@@ -1,22 +1,40 @@
-import React, { useEffect, useState } from 'react'
-import { getDrivers } from '../lib/api'
+import React, { useState } from 'react'
+import { getDriverByLicense } from '../lib/api'
 
 export default function Search() {
-  const [borough, setBorough] = useState('')
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
-  const [limit, setLimit] = useState(25)
-  const [drivers, setDrivers] = useState([])
-  const [total, setTotal] = useState(0)
+  const [license, setLicense] = useState('')
+  const [driver, setDriver] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  async function load() {
+  function formatDate(val) {
+    if (!val) return '—'
+    try {
+      const d = new Date(val)
+      if (isNaN(d.getTime())) return String(val)
+      return d.toLocaleString()
+    } catch {
+      return String(val)
+    }
+  }
+
+  async function submit(e) {
+    e.preventDefault()
+    setError(null)
+    setDriver(null)
+    const value = license.trim()
+    if (!value) {
+      setError('Please enter a driver license number')
+      return
+    }
     try {
       setLoading(true)
-      const res = await getDrivers({ borough: borough || undefined, search: search || undefined, page, limit })
-      setDrivers(res.data)
-      setTotal(res.total)
+      const res = await getDriverByLicense(value)
+      if (!res) {
+        setError('No driver found for that license number')
+      } else {
+        setDriver(res)
+      }
     } catch (e) {
       setError(e.message)
     } finally {
@@ -24,72 +42,58 @@ export default function Search() {
     }
   }
 
-  useEffect(() => { load() }, [page, limit])
-
-  function submit(e) { e.preventDefault(); setPage(1); load() }
-
-  const totalPages = Math.max(1, Math.ceil(total / limit))
-
   return (
     <div className="space-y-4">
       <form onSubmit={submit} className="card flex flex-wrap gap-2 items-end">
-        <div>
-          <label className="block text-sm">Borough</label>
-          <select value={borough} onChange={e => setBorough(e.target.value)} className="border rounded px-2 py-1">
-            <option value="">All</option>
-            <option>Bronx</option>
-            <option>Brooklyn</option>
-            <option>Manhattan</option>
-            <option>Queens</option>
-            <option>Staten Island</option>
-          </select>
+        <div className="flex-1 min-w-[280px]">
+          <label className="block text-sm">Driver License Number</label>
+          <input
+            value={license}
+            onChange={e => setLicense(e.target.value)}
+            placeholder="e.g. 1234567"
+            className="border rounded px-2 py-1 w-full"
+          />
         </div>
-        <div>
-          <label className="block text-sm">Name</label>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name" className="border rounded px-2 py-1" />
-        </div>
-        <div>
-          <label className="block text-sm">Page Size</label>
-          <select value={limit} onChange={e => setLimit(parseInt(e.target.value))} className="border rounded px-2 py-1">
-            {[10,25,50,100,200].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
-        <button className="ml-auto bg-blue-600 text-white px-3 py-2 rounded">Apply</button>
+        <button className="ml-auto bg-blue-600 text-white px-3 py-2 rounded" disabled={loading}>
+          {loading ? 'Searching...' : 'Search'}
+        </button>
       </form>
 
-      <div className="card overflow-x-auto">
-        {loading ? (
-          <div>Loading...</div>
-        ) : error ? (
-          <div className="text-red-600">{error}</div>
-        ) : (
-          <table className="min-w-full text-sm">
-            <thead className="text-left">
-              <tr>
-                <th className="py-2 pr-4">License</th>
-                <th className="py-2 pr-4">Name</th>
-                <th className="py-2 pr-4">Borough</th>
-                <th className="py-2 pr-4">Base</th>
-              </tr>
-            </thead>
-            <tbody>
-              {drivers.map(d => (
-                <tr key={d.license_number} className="border-t">
-                  <td className="py-2 pr-4">{d.license_number}</td>
-                  <td className="py-2 pr-4">{d.driver_name}</td>
-                  <td className="py-2 pr-4">{d.borough || '—'}</td>
-                  <td className="py-2 pr-4">{d.base_name || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="card">
+        {error && <div className="text-red-600">{error}</div>}
+        {!error && !driver && <div className="text-gray-600">Enter a license number and click Search.</div>}
+        {driver && (
+          <div className="text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <table className="w-full">
+                  <tbody>
+                    <tr className="border-b"><th className="py-2 pr-4 text-left font-medium text-gray-600">License</th><td className="py-2">{driver.license_number}</td></tr>
+                    <tr className="border-b"><th className="py-2 pr-4 text-left font-medium text-gray-600">Name</th><td className="py-2">{driver.driver_name || '—'}</td></tr>
+                    <tr className="border-b"><th className="py-2 pr-4 text-left font-medium text-gray-600">Active</th><td className="py-2">{driver.active ? 'Yes' : 'No'}</td></tr>
+                    <tr className="border-b"><th className="py-2 pr-4 text-left font-medium text-gray-600">Borough</th><td className="py-2">{driver.borough || '—'}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <table className="w-full">
+                  <tbody>
+                    <tr className="border-b"><th className="py-2 pr-4 text-left font-medium text-gray-600">Base Name</th><td className="py-2">{driver.base_name || '—'}</td></tr>
+                    <tr className="border-b"><th className="py-2 pr-4 text-left font-medium text-gray-600">Base Number</th><td className="py-2">{driver.base_number || '—'}</td></tr>
+                    <tr className="border-b"><th className="py-2 pr-4 text-left font-medium text-gray-600">Dataset Last Updated</th><td className="py-2">{formatDate(driver.dataset_last_updated)}</td></tr>
+                    <tr className="border-b"><th className="py-2 pr-4 text-left font-medium text-gray-600">Record Updated At</th><td className="py-2">{formatDate(driver.updated_at)}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {driver.raw && (
+              <details className="mt-4">
+                <summary className="cursor-pointer text-gray-700">Raw Source Record</summary>
+                <pre className="mt-2 p-3 bg-gray-50 border rounded overflow-auto text-xs">{JSON.stringify(driver.raw, null, 2)}</pre>
+              </details>
+            )}
+          </div>
         )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button disabled={page<=1} onClick={() => setPage(p => Math.max(1, p-1))} className="px-3 py-2 border rounded disabled:opacity-50">Prev</button>
-        <div>Page {page} / {totalPages}</div>
-        <button disabled={page>=totalPages} onClick={() => setPage(p => Math.min(totalPages, p+1))} className="px-3 py-2 border rounded disabled:opacity-50">Next</button>
       </div>
     </div>
   )

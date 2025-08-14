@@ -34,16 +34,89 @@ function fetchJson(url, headers = {}) {
 }
 
 function mapRecord(rec) {
-  // Best-effort mapping without relying on exact field names; many NYC Open Data fields are lower_snake_case strings
-  // Fallbacks keep the pipeline resilient if fields differ slightly
   const license = rec.license_number || rec.licenseno || rec.license || rec.driver_license_number || null;
   const name = rec.driver_name || rec.name || rec.licensee_name || null;
-  const borough = rec.borough || rec.county || rec.base_borough || null;
-  const active = rec.active === true || String(rec.active).toLowerCase() === 'true' || rec.active_status === 'Active' || true;
   const base_name = rec.base_name || rec.affiliated_base_name || null;
   const base_number = rec.base_number || rec.affiliated_base_number || null;
+  const base_address = rec.base_address || rec.affiliated_base_address || rec.address || null;
+
+  // ✅ NEW: extra borough source fields
+  const rawBorough =
+    rec.borough ||
+    rec.driver_borough ||
+    rec.base_borough ||
+    rec.county ||
+    rec.base_county ||
+    rec.vehicle_borough ||
+    rec.base_city ||
+    rec.driver_city ||
+    rec['borough (driver)'] ||
+    rec['borough (base)'] ||
+    null;
+
+  // ✅ Try to normalize borough from multiple possible hints
+  const borough =
+    normalizeBorough(rawBorough) ||
+    inferBoroughFromBaseNumber(base_number) ||
+    inferBoroughFromAddress(base_address) ||
+    inferBoroughFromBaseName(base_name) || // NEW
+    null;
+
+  const active =
+    rec.active === true ||
+    String(rec.active || '').toLowerCase() === 'true' ||
+    rec.active_status === 'Active' ||
+    true;
+
   const dataset_last_updated = rec.dataset_last_updated || rec.last_updated || null;
   return { license, name, borough, active, base_name, base_number, dataset_last_updated };
+}
+
+function normalizeBorough(val) {
+  if (!val || typeof val !== 'string') return null;
+  const s = val.trim().toLowerCase();
+  if (['bronx', 'bx'].includes(s)) return 'Bronx';
+  if (['brooklyn', 'bk', 'kings'].includes(s)) return 'Brooklyn';
+  if (['manhattan', 'ny', 'new york', 'nyc'].includes(s)) return 'Manhattan';
+  if (['queens', 'qn'].includes(s)) return 'Queens';
+  if (['staten island', 'si', 'richmond'].includes(s)) return 'Staten Island';
+  return null;
+}
+
+function inferBoroughFromBaseNumber(baseNumber) {
+  if (!baseNumber || typeof baseNumber !== 'string') return null;
+  const ch = baseNumber.trim().toUpperCase()[0];
+  switch (ch) {
+    case 'B': return 'Bronx';
+    case 'K': return 'Brooklyn';
+    case 'M': return 'Manhattan';
+    case 'Q': return 'Queens';
+    case 'R': return 'Staten Island';
+    default: return null;
+  }
+}
+
+function inferBoroughFromAddress(addr) {
+  if (!addr || typeof addr !== 'string') return null;
+  const s = addr.toLowerCase();
+  if (s.includes('bronx')) return 'Bronx';
+  if (s.includes('brooklyn')) return 'Brooklyn';
+  if (s.includes('new york') || s.includes('manhattan')) return 'Manhattan';
+  if (s.includes('queens')) return 'Queens';
+  if (s.includes('staten island')) return 'Staten Island';
+  return null;
+}
+
+// ✅ NEW: try to guess from base name keywords
+function inferBoroughFromBaseName(name) {
+  if (!name || typeof name !== 'string') return null;
+  const s = name.toLowerCase();
+  if (s.includes('bronx')) return 'Bronx';
+  if (s.includes('brooklyn')) return 'Brooklyn';
+  if (s.includes('manhattan') || s.includes('nyc')) return 'Manhattan';
+  if (s.includes('queens')) return 'Queens';
+  if (s.includes('staten island')) return 'Staten Island';
+  return null;
 }
 
 async function upsertDrivers(records) {
@@ -59,7 +132,7 @@ async function upsertDrivers(records) {
 
     for (const rec of records) {
       const m = mapRecord(rec);
-      if (!m.license) continue; // skip rows without a license_number key
+      if (!m.license) continue;
       await client.query(text, [
         m.license,
         m.name,
@@ -82,16 +155,11 @@ async function upsertDrivers(records) {
 }
 
 async function runSync() {
-  // Ensure schema exists before upsert (important for local runs without starting server)
   try {
     await initDb();
-  } catch (_) {
-    // ignore if already initialized
-  }
+  } catch (_) {}
   const headers = {};
   if (process.env.SOCRATA_APP_TOKEN) headers['X-App-Token'] = process.env.SOCRATA_APP_TOKEN;
-
-  // Pull in pages if dataset is large; start with a single fetch first
   const url = `${DATA_URL}?$limit=50000`;
   const data = await fetchJson(url, headers);
   await upsertDrivers(data);

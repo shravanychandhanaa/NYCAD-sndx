@@ -16,3 +16,13 @@ export async function getDrivers({ borough, search, page = 1, limit = 25 } = {})
   if (!res.ok) throw new Error('Failed to fetch drivers')
   return res.json()
 }
+
+export async function getDriverByLicense(license) {
+  if (!license) throw new Error('License is required')
+  const res = await fetch(`${API_BASE}/drivers/${encodeURIComponent(license)}`)
+  if (res.status === 404) {
+    return null
+  }
+  if (!res.ok) throw new Error('Failed to fetch driver')
+  return res.json()
+}
