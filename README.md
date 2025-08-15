@@ -2,7 +2,7 @@
 
 A public dashboard displaying NYC TLC For-Hire Vehicle (FHV) Active Driver data from NYC Open Data.
 
-- Data source: https://data.cityofnewyork.us/resource/xjfq-wh2d.json
+- Data source: posgres SQL
 - Backend: Node.js + Express + Postgres, daily sync job
 - Frontend: React + Tailwind CSS
 - Orchestration: docker-compose
