@@ -26,3 +26,13 @@ export async function getDriverByLicense(license) {
   if (!res.ok) throw new Error('Failed to fetch driver')
   return res.json()
 }
+
+// Fetch a small sample of raw source records from backend proxy
+// Used to reflect what the NYC API actually provides when boroughs are unknown
+export async function getSourceSample(limit = 10) {
+  const url = new URL(`${API_BASE}/source/sample`)
+  url.searchParams.set('limit', String(Math.max(1, Math.min(limit, 50))))
+  const res = await fetch(url.toString())
+  if (!res.ok) throw new Error('Failed to fetch source sample')
+  return res.json()
+}

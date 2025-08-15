@@ -25,7 +25,8 @@ export default function App() {
         </Routes>
       </main>
       <footer className="container py-6 text-sm text-gray-500">
-        Data: NYC Open Data — FHV Active Drivers
+        <div className="font-medium text-gray-600">csstechnology confidential</div>
+        <div className="mt-1">Data: NYC — FHV Active Drivers</div>
       </footer>
     </div>
   )
