@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { getStats } from '../lib/api';
-import BoroughChart from '../components/BoroughChart';
 import TrendChart from '../components/TrendChart';
 
 export default function Dashboard() {
@@ -167,7 +166,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div className="bg-white shadow overflow-hidden sm:rounded-lg lg:col-span-2">
           <div className="px-4 py-5 sm:px-6">
             <h3 className="text-lg leading-6 font-medium text-gray-900">30-Day Trend</h3>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">Daily active driver count over the past month</p>
@@ -175,18 +174,6 @@ export default function Dashboard() {
           <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
             <div className="py-4 sm:py-5 sm:px-6">
               <TrendChart data={trendData} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Drivers by Borough</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">Distribution of active drivers across NYC boroughs</p>
-          </div>
-          <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-            <div className="py-4 sm:py-5 sm:px-6">
-              <BoroughChart data={stats.byBorough} />
             </div>
           </div>
         </div>

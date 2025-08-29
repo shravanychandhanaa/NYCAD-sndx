@@ -93,18 +93,24 @@ router.get('/', async (req, res) => {
       getTrends()
     ]);
     
+    // If no historical trends exist yet, synthesize one point from current stats
+    const today = getCurrentDate();
+    const safeTrends = (trends && trends.length > 0)
+      ? trends
+      : [{ date: today, totalDrivers: currentStats.totalActiveDrivers, byBorough: currentStats.byBorough }];
+
     // Store today's stats for trends (fire and forget)
     storeDailyStats().catch(console.error);
     
     res.json({
       ...currentStats,
       trends: {
-        daily: trends,
+        daily: safeTrends,
         last30Days: {
-          min: trends.length > 0 ? Math.min(...trends.map(t => t.totalDrivers)) : 0,
-          max: trends.length > 0 ? Math.max(...trends.map(t => t.totalDrivers)) : 0,
-          change: trends.length > 1 
-            ? ((trends[trends.length-1].totalDrivers - trends[0].totalDrivers) / trends[0].totalDrivers * 100).toFixed(1)
+          min: safeTrends.length > 0 ? Math.min(...safeTrends.map(t => t.totalDrivers)) : 0,
+          max: safeTrends.length > 0 ? Math.max(...safeTrends.map(t => t.totalDrivers)) : 0,
+          change: safeTrends.length > 1 && safeTrends[0].totalDrivers > 0
+            ? ((safeTrends[safeTrends.length-1].totalDrivers - safeTrends[0].totalDrivers) / safeTrends[0].totalDrivers * 100).toFixed(1)
             : 0
         }
       }

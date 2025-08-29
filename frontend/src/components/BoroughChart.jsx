@@ -100,48 +100,48 @@ export default function BoroughChart({ data }) {
     }
   }
 
-  if (hasOnlyUnknown) {
-    return (
-      <div className="p-4 text-sm text-gray-600 bg-gray-50 rounded border border-gray-200 space-y-3">
-        <div>
-          Borough information is not provided by the source data. Showing "Unknown" only.
-        </div>
-        <div className="text-gray-700">
-          <div className="font-medium mb-2">Source sample (from NYC Open Data)</div>
-          {loadingSample && <div className="text-gray-500">Loading sample…</div>}
-          {sampleError && <div className="text-red-600">{sampleError}</div>}
-          {!loadingSample && !sampleError && sample.length > 0 && (
-            <div className="overflow-auto">
-              <table className="min-w-[560px] w-full text-xs">
-                <thead>
-                  <tr className="text-left border-b">
-                    <th className="py-1 pr-3">License</th>
-                    <th className="py-1 pr-3">Name</th>
-                    <th className="py-1 pr-3">Type</th>
-                    <th className="py-1 pr-3">Expiration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sample.map((row, i) => (
-                    <tr key={i} className="border-b last:border-b-0">
-                      <td className="py-1 pr-3 whitespace-nowrap">{row.license_number || '—'}</td>
-                      <td className="py-1 pr-3">{row.name || '—'}</td>
-                      <td className="py-1 pr-3 whitespace-nowrap">{row.type || '—'}</td>
-                      <td className="py-1 pr-3 whitespace-nowrap">{row.expiration_date ? new Date(row.expiration_date).toLocaleDateString() : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div style={{ height: 360 }}>
-      <Bar data={chartData} options={options} />
+    <div className="space-y-4">
+      {hasOnlyUnknown && (
+        <div className="p-4 text-sm text-gray-600 bg-gray-50 rounded border border-gray-200 space-y-3">
+          <div>
+            Borough information is not provided by the source data. Aggregating under "Unknown".
+          </div>
+          <div className="text-gray-700">
+            <div className="font-medium mb-2">Source sample (from NYC Open Data)</div>
+            {loadingSample && <div className="text-gray-500">Loading sample…</div>}
+            {sampleError && <div className="text-red-600">{sampleError}</div>}
+            {!loadingSample && !sampleError && sample.length > 0 && (
+              <div className="overflow-auto">
+                <table className="min-w-[560px] w-full text-xs">
+                  <thead>
+                    <tr className="text-left border-b">
+                      <th className="py-1 pr-3">License</th>
+                      <th className="py-1 pr-3">Name</th>
+                      <th className="py-1 pr-3">Type</th>
+                      <th className="py-1 pr-3">Expiration</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sample.map((row, i) => (
+                      <tr key={i} className="border-b last:border-b-0">
+                        <td className="py-1 pr-3 whitespace-nowrap">{row.license_number || '—'}</td>
+                        <td className="py-1 pr-3">{row.name || '—'}</td>
+                        <td className="py-1 pr-3 whitespace-nowrap">{row.type || '—'}</td>
+                        <td className="py-1 pr-3 whitespace-nowrap">{row.expiration_date ? new Date(row.expiration_date).toLocaleDateString() : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div style={{ height: 360 }}>
+        <Bar data={chartData} options={options} />
+      </div>
     </div>
   )
 }

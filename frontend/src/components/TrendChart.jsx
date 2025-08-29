@@ -77,19 +77,31 @@ export default function TrendChart({ data }) {
       <div style={{ height: '300px' }}>
         <Line data={chartData} options={options} />
       </div>
-      {data.length > 1 && (
-        <div className="mt-2 text-sm text-gray-600">
-          {data[0].totalDrivers < data[data.length - 1].totalDrivers ? (
-            <span className="text-green-600">
-              ▲ {Math.round((data[data.length - 1].totalDrivers - data[0].totalDrivers) / data[0].totalDrivers * 100)}% increase over period
-            </span>
-          ) : (
-            <span className="text-red-600">
-              ▼ {Math.round((data[0].totalDrivers - data[data.length - 1].totalDrivers) / data[0].totalDrivers * 100)}% decrease over period
-            </span>
-          )}
-        </div>
-      )}
+      {data.length > 1 && (() => {
+        const first = data[0].totalDrivers || 0;
+        const last = data[data.length - 1].totalDrivers || 0;
+        if (first === 0) {
+          if (last > 0) {
+            return (
+              <div className="mt-2 text-sm text-gray-600">
+                <span className="text-green-600">▲ New data (+{last.toLocaleString()} drivers from 0)</span>
+              </div>
+            );
+          }
+          return <div className="mt-2 text-sm text-gray-600">No change</div>;
+        }
+        const diff = last - first;
+        const pct = Math.round(Math.abs(diff) / first * 100);
+        return (
+          <div className="mt-2 text-sm text-gray-600">
+            {diff >= 0 ? (
+              <span className="text-green-600">▲ {pct}% increase over period</span>
+            ) : (
+              <span className="text-red-600">▼ {pct}% decrease over period</span>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

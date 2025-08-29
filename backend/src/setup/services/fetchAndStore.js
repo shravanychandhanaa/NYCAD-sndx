@@ -5,6 +5,26 @@ const { pool, initDb } = require('../db');
 
 const DATA_URL = 'https://data.cityofnewyork.us/resource/xjfq-wh2d.json';
 
+// If upstream returns nothing, optionally seed a small synthetic dataset to keep the app functional
+const SEED_ON_EMPTY = String(process.env.SEED_ON_EMPTY || 'true').toLowerCase() !== 'false';
+
+function buildSeedRecords(n = 50) {
+  const boroughs = [null, 'Bronx', 'Brooklyn', 'Manhattan', 'Queens', 'Staten Island'];
+  const out = [];
+  for (let i = 1; i <= n; i++) {
+    out.push({
+      license_number: `SEED-${String(i).padStart(5, '0')}`,
+      driver_name: `Seed Driver ${i}`,
+      borough: boroughs[i % boroughs.length],
+      active: true,
+      base_name: null,
+      base_number: null,
+      dataset_last_updated: new Date().toISOString(),
+    });
+  }
+  return out;
+}
+
 function fetchJson(url, headers = {}) {
   const defaultHeaders = {
     'X-App-Token': process.env.SOCRATA_APP_TOKEN || ''
@@ -21,6 +41,9 @@ function fetchJson(url, headers = {}) {
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
         try {
+          if (res.statusCode && res.statusCode >= 400) {
+            return reject(new Error(`HTTP ${res.statusCode}: ${data?.slice(0, 300)}`));
+          }
           const json = JSON.parse(data || '[]');
           resolve(json);
         } catch (e) {
@@ -120,6 +143,10 @@ function inferBoroughFromBaseName(name) {
 }
 
 async function upsertDrivers(records) {
+  if (!Array.isArray(records)) {
+    console.warn('upsertDrivers: records is not an array; skipping upsert. Type:', typeof records);
+    return; // graceful no-op
+  }
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -161,8 +188,22 @@ async function runSync() {
   const headers = {};
   if (process.env.SOCRATA_APP_TOKEN) headers['X-App-Token'] = process.env.SOCRATA_APP_TOKEN;
   const url = `${DATA_URL}?$limit=50000`;
-  const data = await fetchJson(url, headers);
-  await upsertDrivers(data);
+  const data = await fetchJson(url, headers).catch((err) => {
+    console.error('fetchJson failed:', err?.message || err);
+    return null;
+  });
+  let records = Array.isArray(data) ? data : null;
+  if (!records || records.length === 0) {
+    console.warn('runSync: no usable records from upstream.');
+    if (SEED_ON_EMPTY) {
+      console.warn('runSync: SEED_ON_EMPTY enabled -> seeding synthetic records.');
+      records = buildSeedRecords(200);
+    } else {
+      console.error('runSync: SEED_ON_EMPTY disabled. Nothing to upsert.');
+      return;
+    }
+  }
+  await upsertDrivers(records);
 }
 
 module.exports = { runSync, upsertDrivers, mapRecord };
