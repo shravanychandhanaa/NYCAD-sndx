@@ -1,6 +1,4 @@
-# NYC FHV Driver Dashboard
-
-A public dashboard displaying NYC TLC For-Hire Vehicle (FHV) Active Driver data from NYC Open Data.
+# NYC FH Driver Analytics Dashboard
 
 - Data source: posgres SQL
 - Backend: Node.js + Express + Postgres, daily sync job
