@@ -1,0 +1,14 @@
+FROM alpine:3.18
+
+# Install required packages
+RUN apk add --no-cache bash curl postgresql-client busybox-suid
+
+# Create scripts directory
+WORKDIR /scripts
+
+# Copy update script and cron job file
+COPY update_trends.sh /scripts/update_trends.sh
+COPY cron.d /etc/crontabs/root
+
+# Run cron in foreground
+CMD ["crond", "-f", "-l", "2"]

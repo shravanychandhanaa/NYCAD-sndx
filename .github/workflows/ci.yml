@@ -1,0 +1,51 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x] # You can switch to 20 if your project requires
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      # 3. Install dependencies for backend
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install
+
+      # 4. Build backend (if applicable)
+      - name: Build backend
+        working-directory: ./backend
+        run: |
+          if [ -f package.json ]; then
+            npm run build || echo "No build step for backend"
+          fi
+
+      # 5. Install dependencies for frontend
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm install
+
+      # 6. Build frontend
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build

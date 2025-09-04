@@ -45,6 +45,16 @@ services:
       - "5173:80"
     depends_on:
       - backend
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile.cron
+    container_name: fhv-cron
+    depends_on:
+      - postgres
+    volumes:
+      - .:/scripts
+    restart: always
 
 volumes:
   postgres_data:
