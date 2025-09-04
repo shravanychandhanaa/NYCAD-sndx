@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "feat/ci-cd-bootstrap" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "feat/ci-cd-bootstrap" ]
 
 jobs:
   build:
