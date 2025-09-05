@@ -1,0 +1,8 @@
+{
+  "name": "nyc-fhv-root",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+}
