@@ -15,38 +15,44 @@ jobs:
         node-version: [18.x]
 
     steps:
+      # 1. Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2. Setup Node.js
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
 
-      # Backend
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: npm install
-
-      - name: Build backend
-        working-directory: ./backend
-        run: |
-          if [ -f package.json ]; then
-            npm run build || echo "No build step for backend"
-          fi
-
+      # ------------------------
       # Frontend
+      # ------------------------
       - name: Install frontend dependencies
         working-directory: ./frontend
         run: npm install
+
+      - name: Lint frontend
+        working-directory: ./frontend
+        run: npm run lint
 
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
 
-      # ✅ Lint frontend
-      - name: Lint frontend
-        working-directory: ./frontend
+      # ------------------------
+      # Backend
+      # ------------------------
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install
+
+      - name: Lint backend
+        working-directory: ./backend
         run: npm run lint
+
+      - name: Test backend
+        working-directory: ./backend
+        run: npm test
 
