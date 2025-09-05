@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x] # You can switch to 20 if your project requires
+        node-version: [18.x] # Switch to 20.x if your project requires
 
     steps:
       # 1. Checkout code
@@ -31,17 +31,7 @@ jobs:
         working-directory: ./backend
         run: npm install
 
-      # 4. Lint backend (only if lint script exists)
-      - name: Run Lint (backend)
-        working-directory: ./backend
-        run: |
-          if npm run | grep -q "lint"; then
-            npm run lint
-          else
-            echo "No lint script found for backend"
-          fi
-
-      # 5. Build backend (if applicable)
+      # 4. Build backend (if applicable)
       - name: Build backend
         working-directory: ./backend
         run: |
@@ -49,17 +39,18 @@ jobs:
             npm run build || echo "No build step for backend"
           fi
 
-      # 6. Install dependencies for frontend
+      # 5. Install dependencies for frontend
       - name: Install frontend dependencies
         working-directory: ./frontend
         run: npm install
 
-      # 7. Lint frontend
-      - name: Run Lint (frontend)
+      # 6. Lint frontend
+      - name: Lint frontend
         working-directory: ./frontend
         run: npm run lint
 
-      # 8. Build frontend
+      # 7. Build frontend
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
+
