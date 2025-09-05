@@ -184,7 +184,8 @@ async function upsertDrivers(records) {
 async function runSync() {
   try {
     await initDb();
-  } catch (_) {}
+   } catch (_) {}
+
   const headers = {};
   if (process.env.SOCRATA_APP_TOKEN) headers['X-App-Token'] = process.env.SOCRATA_APP_TOKEN;
   const url = `${DATA_URL}?$limit=50000`;
