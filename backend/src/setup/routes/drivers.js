@@ -1,16 +1,17 @@
-const express = require('express');
+import express from "express";
+import { pool } from "../db.js";
+import { query, validationResult } from "express-validator";
+
 const router = express.Router();
-const { pool } = require('../db');
-const { query, validationResult } = require('express-validator');
 
 // GET /drivers?borough=Queens&search=smith&page=1&limit=25
 router.get(
-  '/',
+  "/",
   [
-    query('borough').optional().isString().trim().isLength({ min: 1, max: 50 }),
-    query('search').optional().isString().trim().isLength({ min: 1, max: 100 }),
-    query('page').optional().toInt().isInt({ min: 1 }),
-    query('limit').optional().toInt().isInt({ min: 1, max: 200 }),
+    query("borough").optional().isString().trim().isLength({ min: 1, max: 50 }),
+    query("search").optional().isString().trim().isLength({ min: 1, max: 100 }),
+    query("page").optional().toInt().isInt({ min: 1 }),
+    query("limit").optional().toInt().isInt({ min: 1, max: 200 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -35,7 +36,7 @@ router.get(
       wheres.push(`LOWER(driver_name) LIKE $${values.length}`);
     }
 
-    const whereSql = wheres.length ? `WHERE ${wheres.join(' AND ')}` : '';
+    const whereSql = wheres.length ? `WHERE ${wheres.join(" AND ")}` : "";
 
     try {
       const listSql = `SELECT license_number, driver_name, borough, active, base_name, base_number, dataset_last_updated FROM drivers ${whereSql} ORDER BY driver_name ASC LIMIT ${limit} OFFSET ${offset}`;
@@ -53,29 +54,30 @@ router.get(
         total: parseInt(countRes.rows[0].count, 10),
       });
     } catch (err) {
-      console.error('Error fetching drivers', err);
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error("Error fetching drivers", err);
+      return res.status(500).json({ error: "Internal server error" });
     }
   }
 );
 
 // GET /drivers/:license
-router.get('/:license', async (req, res) => {
+router.get("/:license", async (req, res) => {
   const { license } = req.params;
   if (!license || String(license).length > 50) {
-    return res.status(400).json({ error: 'Invalid license' });
+    return res.status(400).json({ error: "Invalid license" });
   }
   try {
     const { rows } = await pool.query(
-      'SELECT * FROM drivers WHERE license_number = $1',
+      "SELECT * FROM drivers WHERE license_number = $1",
       [license]
     );
-    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    if (!rows.length) return res.status(404).json({ error: "Not found" });
     return res.json(rows[0]);
   } catch (err) {
-    console.error('Error fetching driver', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error("Error fetching driver", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
-module.exports = router;
+export default router;
+
