@@ -13,22 +13,19 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: Install Dependencies (Backend)
-        run: npm install
+      - run: npm install
+      - run: npm run lint --if-present
+      - run: npm test --if-present
 
-      - name: Run Lint (Backend)
-        run: npm run lint --if-present
-
-      - name: Run Tests (Backend)
-        run: npm test --if-present
+      # Dependency Vulnerability Check
+      - name: Run npm audit
+        run: npm audit --production --audit-level=high || true
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -36,16 +33,48 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: Install Dependencies (Frontend)
-        run: npm install
+      - run: npm install
+      - run: npm run build
 
-      - name: Build Frontend
-        run: npm run build
+      # Dependency Vulnerability Check
+      - name: Run npm audit
+        run: npm audit --production --audit-level=high || true
+
+  container-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # Build Docker Image
+      - name: Build Docker Image
+        run: docker build -t nycad-app .
+
+      # Scan with Trivy
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: nycad-app
+          format: table
+          exit-code: 0
+          ignore-unfixed: true
+          vuln-type: os,library
+
+  sonar-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        with:
+          args: >
+            -Dsonar.projectKey=NYCAD-sndx
+            -Dsonar.organization=shravanychandhanaa
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
