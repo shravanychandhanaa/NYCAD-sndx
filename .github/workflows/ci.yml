@@ -86,7 +86,7 @@ jobs:
         uses: sonarsource/sonarqube-scan-action@master
         with:
           args: >
-            -Dsonar.projectKey=NYCAD-sndx
+            -Dsonar.projectKey=shravanychandhanaa_NYCAD-sndx
             -Dsonar.organization=shravanychandhanaa
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
