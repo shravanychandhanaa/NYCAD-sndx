@@ -45,25 +45,37 @@ jobs:
       # Dependency Vulnerability Check
       - name: Run npm audit
         run: npm audit --production --audit-level=high || true
+ container-scan:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v3
 
-  container-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+    # Backend Image
+    - name: Build Backend Image
+      run: docker build -t nycad-backend ./backend
 
-      # Build Docker Image
-      - name: Build Docker Image
-        run: docker build -t nycad-app .
+    - name: Scan Backend with Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: nycad-backend
+        format: table
+        exit-code: 0
+        ignore-unfixed: true
+        vuln-type: os,library
 
-      # Scan with Trivy
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: nycad-app
-          format: table
-          exit-code: 0
-          ignore-unfixed: true
-          vuln-type: os,library
+    # Frontend Image
+    - name: Build Frontend Image
+      run: docker build -t nycad-frontend ./frontend
+
+    - name: Scan Frontend with Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: nycad-frontend
+        format: table
+        exit-code: 0
+        ignore-unfixed: true
+        vuln-type: os,library
+
 
   sonar-scan:
     runs-on: ubuntu-latest
